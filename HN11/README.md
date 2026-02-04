@@ -98,7 +98,9 @@ If you use this code, please cite:
 @article{HNAdam2026,
   title={Hybrid Norm Adam: A Norm-Regulated Adaptive Optimization Strategy for Robust Medical Image Classification},
   author={Indrakumar K, Ravikumar M},
+  
   journal={},
+  
   year={2026}
 }
 
