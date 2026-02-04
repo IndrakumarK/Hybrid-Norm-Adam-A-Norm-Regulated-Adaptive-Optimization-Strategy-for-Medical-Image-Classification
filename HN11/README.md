@@ -95,8 +95,12 @@ Evaluation is performed on held-out test sets.
 ## Citation
 If you use this code, please cite:
 
-Indrakumar K., Ravikumar M.  
-*Hybrid Norm Adam: A Norm-Regulated Adaptive Optimization Strategy for Robust Medical Image Classification*.
+@article{HNAdam2026,
+  title={Hybrid Norm Adam: A Norm-Regulated Adaptive Optimization Strategy for Robust Medical Image Classification},
+  author={Indrakumar K, Ravikumar M},
+  journal={},
+  year={2026}
+}
 
 ## License
-This project is released for academic and research purposes only.
+This project is released for research purposes only.
