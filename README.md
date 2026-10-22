@@ -92,11 +92,5 @@ Evaluation is performed on held-out test sets.
 - OpenCV
 - Scikit-learn
 
-## Citation
-If you use this code, please cite:
-
-Indrakumar K., Ravikumar M.  
-*Hybrid Norm Adam: A Norm-Regulated Adaptive Optimization Strategy for Robust Medical Image Classification*.
-
 ## License
 This project is released for academic and research purposes only.
