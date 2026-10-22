@@ -96,8 +96,8 @@ Evaluation is performed on held-out test sets.
 If you use this code, please cite:
 
 @article{HNAdam2026,
-  title={Hybrid Norm Adam: A Norm-Regulated Adaptive Optimization Strategy for Robust Medical Image Classification},
-  author={Indrakumar K, Ravikumar M},
+  title={Classification of Brain Tumor MR Images Using VGG19 with a Customized Adaptive Moment Estimation (ADAM) Optimizer},
+  author={},
   
   journal={},
   
