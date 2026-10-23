@@ -11,21 +11,37 @@ The proposed Hybrid Norm Adam (HNAdam) optimizer introduces a norm-regulated reg
 ## Datasets
 The experiments use the following publicly available datasets:
 
-1. **SARTAJdataset Br35H**
-   - Multiclass MRI dataset (Glioma, Meningioma, Pituitary, No Tumor)
-   - Source: BR35H clinical dataset
+SARTAJdataset Br35H
 
-2. **Brain MRI Images for Brain Tumor Detection**
-   - Binary classification dataset
-   - Source: Kaggle (Navoneel Chakrabarty)
+Multiclass MRI dataset (Glioma, Meningioma, Pituitary, No Tumor)
 
-3. **Masoud Nickparvar Brain Tumor MRI Dataset**
-   - Binary classification dataset
-   - Source: Kaggle
+Source: Sartaj Bhuvaji — Kaggle
 
-4. **Indk214 Brain MRI Dataset**
-   - Binary classification dataset
-   - Source: Kaggle
+URL: https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri
+
+Brain MRI Images for Brain Tumor Detection
+
+Binary classification dataset
+
+Source: Navoneel Chakrabarty — Kaggle
+
+URL: https://www.kaggle.com/datasets/navoneel/brain-mri-images-for-brain-tumor-detection
+
+Masoud Nickparvar Brain Tumor MRI Dataset
+
+Binary classification dataset
+
+Source: Masoud Nickparvar — Kaggle
+
+URL: https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset
+
+Indk214 Brain MRI Dataset
+
+Binary classification dataset
+
+Source: Indk214 — Kaggle
+
+URL: https://www.kaggle.com/datasets/indk214/brain-tumor-dataset-segmentation-and-classification
 
 Please download datasets from their respective sources and organize them as described below.
 
