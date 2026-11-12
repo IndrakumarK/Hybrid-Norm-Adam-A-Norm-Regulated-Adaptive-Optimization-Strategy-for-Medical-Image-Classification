@@ -1,15 +1,27 @@
+
+import random
 import tensorflow as tf
-from tensorflow.keras.optimizers import Optimizer
+from tensorflow.keras.optimizers.legacy import Optimizer
 
 
 class HNAdam(Optimizer):
     """
     Hybrid Norm Adam (HNAdam)
 
-    Implements the proposed Hybrid Norm Adam optimizer described in the manuscript.
-    The optimizer dynamically adjusts the norm K(t) based on gradient statistics
-    and switches between Adam and AMSGrad update rules to balance exploration
-    and exploitation, improving convergence and generalization.
+    Combines Adam and AMSGrad using a dynamically calculated
+    adaptive norm and a threshold-based switching mechanism.
+
+    Manuscript formulation:
+        A(t) = clip(
+            K_t0 * max(abs(g_t)) /
+            (max(abs(m_(t-1))) + epsilon),
+            1, 4
+        )
+
+        If A(t) < 2:
+            Use AMSGrad
+        Else:
+            Use Adam
     """
 
     def __init__(
@@ -17,30 +29,34 @@ class HNAdam(Optimizer):
         learning_rate=0.001,
         beta_1=0.9,
         beta_2=0.999,
-        epsilon=1e-7,
-        alpha=0.01,   # gradient norm coefficient
-        beta=0.001,  # weight norm coefficient
+        epsilon=1e-8,
+        K_t0=None,
+        threshold=2.0,
         name="HNAdam",
         **kwargs
     ):
         super().__init__(name, **kwargs)
 
-        # Hyperparameters
         self._set_hyper("learning_rate", learning_rate)
         self._set_hyper("beta_1", beta_1)
         self._set_hyper("beta_2", beta_2)
-        self._set_hyper("alpha", alpha)
-        self._set_hyper("beta", beta)
 
         self.epsilon = epsilon
+        self.threshold = threshold
+
+        # Select the norm scaling parameter once at initialization.
+        # A fixed value can also be supplied for reproducibility.
+        self.K_t0 = (
+            random.uniform(2.0, 4.0)
+            if K_t0 is None
+            else float(K_t0)
+        )
+
+        if not 2.0 <= self.K_t0 <= 4.0:
+            raise ValueError("K_t0 must be between 2 and 4.")
 
     def _create_slots(self, var_list):
-        """
-        Create optimizer slots:
-        m     : first moment vector
-        v     : second moment vector
-        vhat  : maximum second moment (AMSGrad)
-        """
+        """Initialize Adam and AMSGrad moment variables."""
         for var in var_list:
             self.add_slot(var, "m")
             self.add_slot(var, "v")
@@ -48,108 +64,147 @@ class HNAdam(Optimizer):
 
     @tf.function
     def _resource_apply_dense(self, grad, var):
-        var_dtype = var.dtype.base_dtype
 
-        # Retrieve hyperparameters
-        lr = self._get_hyper("learning_rate", var_dtype)
-        beta_1 = self._get_hyper("beta_1", var_dtype)
-        beta_2 = self._get_hyper("beta_2", var_dtype)
-        alpha = self._get_hyper("alpha", var_dtype)
-        beta = self._get_hyper("beta", var_dtype)
+        dtype = var.dtype.base_dtype
 
-        # Slots
+        lr = self._get_hyper("learning_rate", dtype)
+        beta_1 = self._get_hyper("beta_1", dtype)
+        beta_2 = self._get_hyper("beta_2", dtype)
+
+        epsilon = tf.cast(self.epsilon, dtype)
+        threshold = tf.cast(self.threshold, dtype)
+        K_t0 = tf.cast(self.K_t0, dtype)
+
+        # Retrieve optimizer slots
         m = self.get_slot(var, "m")
         v = self.get_slot(var, "v")
         vhat = self.get_slot(var, "vhat")
 
-        # -------------------------------------------------
-        # Eq. (19): First moment estimate
-        # m_t = ß1 * m_{t-1} + (1 - ß1) * g_t
-        # -------------------------------------------------
-        m.assign(beta_1 * m + (1.0 - beta_1) * grad)
+        # ------------------------------------------------
+        # Step 1: Preserve the previous first moment
+        # ------------------------------------------------
+        m_previous = tf.identity(m)
 
-        # -------------------------------------------------
-        # Eq. (20): Second moment estimate
-        # v_t = ß2 * v_{t-1} + (1 - ß2) * g_t^2
-        # -------------------------------------------------
-        v.assign(beta_2 * v + (1.0 - beta_2) * tf.square(grad))
+        # ------------------------------------------------
+        # Step 2: Update first and second moments
+        # ------------------------------------------------
+        m.assign(
+            beta_1 * m_previous +
+            (1.0 - beta_1) * grad
+        )
 
-        # -------------------------------------------------
-        # AMSGrad second moment tracking
-        # v^_t = max(v^_{t-1}, v_t)
-        # -------------------------------------------------
-        vhat.assign(tf.maximum(vhat, v))
+        v.assign(
+            beta_2 * v +
+            (1.0 - beta_2) * tf.square(grad)
+        )
 
-        # -------------------------------------------------
-        # Bias correction
-        # -------------------------------------------------
-        t = tf.cast(self.iterations + 1, var_dtype)
+        # ------------------------------------------------
+        # Step 3: Bias correction
+        # ------------------------------------------------
+        t = tf.cast(self.iterations + 1, dtype)
+
         m_hat = m / (1.0 - tf.pow(beta_1, t))
         v_hat = v / (1.0 - tf.pow(beta_2, t))
-        vhat_corr = vhat / (1.0 - tf.pow(beta_2, t))
 
-        # -------------------------------------------------
-        # Eq. (22): Dynamic norm computation
-        # K(t) = |g_t| / (|m_{t-1}| + e)
-        # -------------------------------------------------
-        K_t = tf.abs(grad) / (tf.abs(m) + self.epsilon)
+        # ------------------------------------------------
+        # Step 4: Calculate adaptive norm A(t)
+        # Using the previous first-moment estimate
+        # ------------------------------------------------
+        max_gradient = tf.reduce_max(tf.abs(grad))
+        max_previous_moment = tf.reduce_max(
+            tf.abs(m_previous)
+        )
 
-        # -------------------------------------------------
-        # Eq. (34): Hybrid switching condition
-        # If mean(K(t)) < 2 ? AMSGrad
-        # Else ? Adam
-        # -------------------------------------------------
-        use_amsgrad = tf.reduce_mean(K_t) < 2.0
+        adaptive_norm = (
+            K_t0 * max_gradient /
+            (max_previous_moment + epsilon)
+        )
 
-        # -------------------------------------------------
-        # Adam update rule
-        # -------------------------------------------------
-        adam_update = lr * m_hat / (tf.sqrt(v_hat) + self.epsilon)
+        # Restrict adaptive norm to [1, 4]
+        adaptive_norm = tf.clip_by_value(
+            adaptive_norm,
+            tf.cast(1.0, dtype),
+            tf.cast(4.0, dtype)
+        )
 
-        # -------------------------------------------------
-        # AMSGrad update rule
-        # -------------------------------------------------
-        amsgrad_update = lr * m_hat / (tf.sqrt(vhat_corr) + self.epsilon)
+        # ------------------------------------------------
+        # Step 5: Update AMSGrad maximum second moment
+        # ------------------------------------------------
+        vhat.assign(
+            tf.maximum(vhat, v)
+        )
 
-        # -------------------------------------------------
-        # Select update based on hybrid norm condition
-        # -------------------------------------------------
-        update = tf.where(use_amsgrad, amsgrad_update, adam_update)
+        vhat_corrected = (
+            vhat / (1.0 - tf.pow(beta_2, t))
+        )
 
-        # -------------------------------------------------
-        # Hybrid Norm Stabilization (Manuscript Section 3.6)
-        # -------------------------------------------------
-        grad_norm = tf.norm(grad, ord=2)
-        weight_l1 = tf.norm(var, ord=1)
+        # ------------------------------------------------
+        # Step 6: Calculate Adam update
+        # ------------------------------------------------
+        adam_update = (
+            lr * m_hat /
+            (tf.sqrt(v_hat) + epsilon)
+        )
 
-        stabilizer = 1.0 / (alpha * grad_norm + beta * weight_l1 + 1.0)
+        # ------------------------------------------------
+        # Step 7: Calculate AMSGrad update
+        # ------------------------------------------------
+        amsgrad_update = (
+            lr * m_hat /
+            (tf.sqrt(vhat_corrected) + epsilon)
+        )
 
-        # -------------------------------------------------
-        # Parameter update
-        # -------------------------------------------------
-        var.assign_sub(update * stabilizer)
+        # ------------------------------------------------
+        # Step 8: Hybrid switching mechanism
+        # A(t) < 2 : AMSGrad
+        # A(t) >= 2: Adam
+        # ------------------------------------------------
+        use_amsgrad = adaptive_norm < threshold
+
+        update = tf.where(
+            use_amsgrad,
+            amsgrad_update,
+            adam_update
+        )
+
+        # ------------------------------------------------
+        # Step 9: Update model parameters
+        # ------------------------------------------------
+        return var.assign_sub(update)
 
     def _resource_apply_sparse(self, grad, var, indices):
-        """
-        Convert sparse gradients to dense form to enable
-        norm-based computations.
-        """
+
+        # Convert sparse gradients into dense gradients
         dense_grad = tf.convert_to_tensor(
-            tf.IndexedSlices(grad, indices, tf.shape(var))
+            tf.IndexedSlices(
+                grad,
+                indices,
+                tf.shape(var)
+            )
         )
-        return self._resource_apply_dense(dense_grad, var)
+
+        return self._resource_apply_dense(
+            dense_grad,
+            var
+        )
 
     def get_config(self):
-        """
-        Required for optimizer serialization.
-        """
+
         config = super().get_config()
+
         config.update({
-            "learning_rate": self._serialize_hyperparameter("learning_rate"),
-            "beta_1": self._serialize_hyperparameter("beta_1"),
-            "beta_2": self._serialize_hyperparameter("beta_2"),
+            "learning_rate": self._serialize_hyperparameter(
+                "learning_rate"
+            ),
+            "beta_1": self._serialize_hyperparameter(
+                "beta_1"
+            ),
+            "beta_2": self._serialize_hyperparameter(
+                "beta_2"
+            ),
             "epsilon": self.epsilon,
-            "alpha": self._serialize_hyperparameter("alpha"),
-            "beta": self._serialize_hyperparameter("beta"),
+            "K_t0": self.K_t0,
+            "threshold": self.threshold
         })
+
         return config
