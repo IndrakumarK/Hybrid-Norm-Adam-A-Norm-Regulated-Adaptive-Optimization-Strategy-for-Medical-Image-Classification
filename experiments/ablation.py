@@ -8,15 +8,7 @@ B. Adam/AMSGrad switching without adaptive norm adjustment.
 C. Full HNAdam with adaptive norm adjustment, hybrid switching,
    and norm clipping.
 
-IMPORTANT:
-The exact update equations for configurations A and B must be verified
-against the final manuscript before implementing or reporting results.
-
-The full_hnadam configuration uses the existing HNAdam optimizer.
-"""
-
 from typing import Any, Dict
-
 
 ABLATION_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     "adam_plus_adaptive_norm": {
