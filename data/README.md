@@ -107,5 +107,3 @@ Before running the experiments, verify that:
 - Exact and near-duplicate image handling is documented.
 - Training, validation, and testing partitions are kept consistent across optimizer comparisons.
 - The test set is not used for training or hyperparameter selection.
-
-The dataset counts, partitioning details, and duplicate-removal records should agree with the corresponding experimental descriptions in the manuscript.
