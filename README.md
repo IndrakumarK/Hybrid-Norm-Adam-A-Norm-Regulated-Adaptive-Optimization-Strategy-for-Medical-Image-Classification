@@ -255,7 +255,7 @@ The evaluation framework provides model evaluation, classification metrics, stat
 
 If you use this implementation, please cite the associated manuscript:
 
-Indrakumar K, et al. *Classification of Brain Tumor MR Images Using VGG19 with a Customized Adaptive Moment Estimation (ADAM) Optimizer.* Journal of Imaging. Manuscript ID: jimaging-4679286.
+Indrakumar K, et al. *Classification of Brain Tumor MR Images Using VGG19 with a Customized Adaptive Moment Estimation (ADAM) Optimizer.* Journal of Imaging. 
 
 Update the citation with the final publication details once available.
 
