@@ -1,0 +1,20 @@
+# Recommended Python version: 3.8–3.10
+
+# Deep learning framework
+tensorflow==2.10.1
+keras==2.10.0
+
+# Numerical computing
+numpy==1.23.5
+scipy==1.10.1
+pandas==1.5.3
+
+# Image processing
+opencv-python-headless==4.8.0.76
+
+# Machine learning
+scikit-learn==1.2.2
+
+# Visualization
+matplotlib==3.7.1
+seaborn==0.12.2
