@@ -17,7 +17,7 @@ Multiclass MRI dataset (Glioma, Meningioma, Pituitary, No Tumor)
 
 Source: Sartaj Bhuvaji — Kaggle
 
-URL: https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri
+URL: https://www.kaggle.com/datasets/abushayid/figshare-br35h
 
 Brain MRI Images for Brain Tumor Detection
 
